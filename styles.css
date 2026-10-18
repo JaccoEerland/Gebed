@@ -73,3 +73,32 @@
 [data-theme="light"] .empty-state strong{color:#243e2e}
 [data-theme="light"] .danger-link,[data-theme="light"] .settings-icon-btn.danger{color:var(--danger)}
 @media(max-width:410px){.scripture-editor{padding:14px 11px}.scripture-fields{gap:6px}.scripture-fields .field-label{font-size:.7rem}.app-dialog .scripture-editor input:not([type=file]),.app-dialog .scripture-editor select{font-size:.89rem;padding:11px 7px}}
+
+/* Verhoorde gebeden: compact archief, apart van actieve gebedspunten. */
+.answered-section{margin:16px 0 0;border:1px solid var(--line);background:rgba(32,46,47,.84);border-radius:18px;overflow:hidden}
+.answered-toggle{width:100%;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--text);text-align:left;background:transparent;border:0}
+.answered-toggle:hover{background:rgba(255,255,255,.03)}
+.answered-heading,.answered-meta{display:flex;align-items:center;gap:13px}
+.answered-heading .section-kicker{display:block;font-size:.61rem;margin-bottom:5px}
+.answered-title{font-family:Georgia,serif;font-size:1.34rem;line-height:1.2;display:block}
+.answered-symbol{background:#294d3e;color:#bfe4c8;font-weight:750;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;flex-shrink:0}
+.answered-meta{gap:11px;color:var(--muted)}
+.answered-meta svg{width:18px;height:18px;transition:transform .2s}
+.answered-toggle[aria-expanded="true"] .answered-meta svg{transform:rotate(180deg)}
+.answered-count{min-width:23px;text-align:center;font-size:.85rem}
+.answered-list{padding:6px 18px 16px;border-top:1px solid var(--line)}
+.answered-list[hidden]{display:none}
+.answered-empty{color:var(--muted);font-size:.87rem;padding:15px 1px;margin:0}
+.answered-group+.answered-group{margin-top:17px}
+.answered-category{color:var(--mint);font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;margin:15px 0 4px}
+.answered-point{padding-left:2px;padding-right:2px}
+.answered-date{color:var(--mint);font-size:.78rem;line-height:1.5;margin:10px 0 0}
+.detail-actions{flex-wrap:wrap;justify-content:flex-end}
+.detail-actions .primary-button{flex:0 1 auto}
+.detail-actions .danger-link{margin-right:auto}
+@media(max-width:430px){.detail-actions{gap:7px}.detail-actions .danger-link{width:100%;order:3;text-align:center;margin-right:0}.detail-actions .primary-button,.detail-actions .secondary-button{flex:1;white-space:nowrap;padding:11px 9px;font-size:.84rem}}
+[data-theme="light"] .answered-section{background:#fff;border-color:#dce5dc}
+[data-theme="light"] .answered-symbol{background:#e1eee5;color:#296247}
+[data-theme="light"] .answered-toggle:hover{background:#f4f8f3}
+[data-theme="light"] .answered-category{color:#33634a}
+[data-theme="light"] .answered-date{color:#4b7658}

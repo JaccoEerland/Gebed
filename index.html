@@ -70,6 +70,14 @@
           <button id="addCategoryButton" class="text-button" type="button"><span aria-hidden="true">＋</span> Nieuwe categorie</button>
         </div>
       </section>
+
+      <section class="answered-section" aria-labelledby="answeredTitle">
+        <button id="answeredToggle" class="answered-toggle" type="button" aria-expanded="false" aria-controls="answeredList">
+          <span class="answered-heading"><span class="answered-symbol" aria-hidden="true">✓</span><span><span class="section-kicker">OM TE ONTHOUDEN</span><span class="answered-title" id="answeredTitle">Verhoorde gebeden</span></span></span>
+          <span class="answered-meta"><span id="answeredCount" class="answered-count">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div id="answeredList" class="answered-list" hidden></div>
+      </section>
     </main>
     <footer class="footer"><span class="privacy-dot" aria-hidden="true"></span> Je gebedspunten blijven op dit apparaat <span class="footer-separator">·</span> Geen account nodig</footer>
   </div>
@@ -92,7 +100,7 @@
     </form>
   </dialog>
 
-  <dialog id="detailDialog" class="app-dialog" aria-labelledby="detailTitle"><div class="dialog-head"><div><p class="section-kicker" id="detailCategory"></p><h2 id="detailTitle"></h2></div><button type="button" class="close-button" data-close="detailDialog" aria-label="Sluiten">×</button></div><div class="dialog-content"><p id="detailBody" class="detail-body"></p><p id="detailDate" class="muted detail-date"></p></div><div class="dialog-actions"><button type="button" class="danger-link" id="deletePointButton">Verwijderen</button><button type="button" class="primary-button" id="editPointButton">Bewerken</button></div></dialog>
+  <dialog id="detailDialog" class="app-dialog" aria-labelledby="detailTitle"><div class="dialog-head"><div><p class="section-kicker" id="detailCategory"></p><h2 id="detailTitle"></h2></div><button type="button" class="close-button" data-close="detailDialog" aria-label="Sluiten">×</button></div><div class="dialog-content"><p id="detailBody" class="detail-body"></p><p id="detailDate" class="muted detail-date"></p><p id="answeredDate" class="answered-date" hidden></p></div><div class="dialog-actions detail-actions"><button type="button" class="danger-link" id="deletePointButton">Verwijderen</button><button type="button" class="secondary-button" id="answerPointButton">✓ Verhoord</button><button type="button" class="primary-button" id="editPointButton">Bewerken</button></div></dialog>
 
   <dialog id="randomDialog" class="app-dialog random-dialog" aria-labelledby="randomTitle"><div class="dialog-head"><div><p class="section-kicker">EEN MOMENT VAN GEBED</p><h2 id="randomTitle">Jouw gebedspunten</h2></div><button type="button" class="close-button" data-close="randomDialog" aria-label="Sluiten">×</button></div><div class="dialog-content"><p id="randomHint" class="muted"></p><div id="randomList" class="random-list"></div></div><div class="dialog-actions"><button type="button" class="secondary-button" data-close="randomDialog">Sluiten</button><button type="button" class="primary-button" id="rerollButton">Opnieuw kiezen</button></div></dialog>
 

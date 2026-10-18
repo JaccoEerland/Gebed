@@ -18,6 +18,7 @@
   let suggestTimer = null;
   let toastTimer = null;
   let openedCategories = new Set();
+  let answeredOpen = false;
 
   function makeId() {
     return (globalThis.crypto && typeof crypto.randomUUID === 'function')
@@ -64,7 +65,10 @@
         || typeof point.title !== 'string' || !point.title.trim() || point.title.length > 100
         || typeof point.body !== 'string' || !point.body.trim() || point.body.length > 4000) throw Error('Ongeldig gebedspunt.');
       pointIds.add(point.id);
-      return {id:point.id,categoryId:point.categoryId,title:point.title.trim(),body:point.body.trim(),createdAt:validISO(point.createdAt),updatedAt:validISO(point.updatedAt)};
+      // Oudere opgeslagen punten/back-ups zonder status blijven actieve gebedspunten.
+      const status=point.status==='answered'?'answered':'active';
+      const answeredAt=status==='answered'&&point.answeredAt?validISO(point.answeredAt):null;
+      return {id:point.id,categoryId:point.categoryId,title:point.title.trim(),body:point.body.trim(),createdAt:validISO(point.createdAt),updatedAt:validISO(point.updatedAt),status,answeredAt};
     });
     return {version:1,categories,points,settings:validateSettings(data.settings)};
   }
@@ -113,6 +117,10 @@
     toastTimer = setTimeout(() => {el.hidden=true;}, 4500);
   }
   function getCategory(id) { return db.categories.find(c => c.id === id); }
+  function isAnswered(point) { return point.status === 'answered'; }
+  function activePoints() { return db.points.filter(point=>!isAnswered(point)); }
+  function answeredPoints() { return db.points.filter(isAnswered); }
+  function formatDate(date) { return new Intl.DateTimeFormat('nl-NL',{dateStyle:'long'}).format(new Date(date)); }
   function uniqueCategory(name) { return db.categories.some(c=>c.name.toLocaleLowerCase('nl')===name.trim().toLocaleLowerCase('nl')); }
   function svgChevron() {
     const span = make('span', 'chevron');
@@ -120,12 +128,12 @@
     return span;
   }
   function render() {
-    const count = db.points.length;
+    const count = activePoints().length;
     $('summaryCount').textContent = `${count} ${count === 1 ? 'gebedspunt' : 'gebedspunten'} in ${db.categories.length} ${db.categories.length === 1 ? 'categorie' : 'categorieën'}`;
     $('randomButton').disabled = count === 0;
     const list = $('categoryList'); list.replaceChildren();
     db.categories.forEach((category, i) => {
-      const points = db.points.filter(p=>p.categoryId===category.id).sort((a,b)=>a.title.localeCompare(b.title,'nl'));
+      const points = activePoints().filter(p=>p.categoryId===category.id).sort((a,b)=>a.title.localeCompare(b.title,'nl'));
       const open = openedCategories.has(category.id);
       const card = make('section',`category-card${open?' is-open':''}`);
       const toggle = make('button','category-toggle');
@@ -157,7 +165,35 @@
       info.append(make('strong','','Je lijst is nog leeg'),document.createTextNode('Tik op ‘Toevoegen’ om je eerste gebedspunt op te schrijven.'));
       list.prepend(info);
     }
+    renderAnswered();
   }
+  function renderAnswered() {
+    const points=answeredPoints().sort((a,b)=>new Date(b.answeredAt||b.updatedAt)-new Date(a.answeredAt||a.updatedAt));
+    $('answeredCount').textContent=String(points.length);
+    $('answeredToggle').setAttribute('aria-expanded',String(answeredOpen));
+    $('answeredList').hidden=!answeredOpen;
+    const container=$('answeredList');container.replaceChildren();
+    if(!answeredOpen)return;
+    if(!points.length) {
+      container.append(make('p','answered-empty','Hier verschijnen gebeden die je als verhoord markeert.'));
+      return;
+    }
+    // Binnen het archief blijven de oorspronkelijke categorieën zichtbaar.
+    for(const category of db.categories){
+      const selected=points.filter(p=>p.categoryId===category.id);
+      if(!selected.length)continue;
+      const group=make('div','answered-group');
+      group.append(make('h3','answered-category',category.name));
+      selected.forEach(point=>{
+        const row=make('button','point-row answered-point');row.type='button';
+        row.append(make('span','',point.title));
+        const arrow=make('span');arrow.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+        row.append(arrow);row.addEventListener('click',()=>openDetails(point.id));group.append(row);
+      });
+      container.append(group);
+    }
+  }
+  $('answeredToggle').addEventListener('click',()=>{answeredOpen=!answeredOpen;renderAnswered();});
   function openDialog(id) { const el=$(id);if(!el.open)el.showModal(); }
   function closeDialog(id) { const el=$(id);if(el.open)el.close(); }
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeDialog(btn.dataset.close)));
@@ -260,7 +296,7 @@
     if(editPointId){
       const point=db.points.find(p=>p.id===editPointId);
       if(point)Object.assign(point,{body,title,categoryId,updatedAt:now});
-    }else db.points.push({id:makeId(),title,body,categoryId,createdAt:now,updatedAt:now});
+    }else db.points.push({id:makeId(),title,body,categoryId,createdAt:now,updatedAt:now,status:'active',answeredAt:null});
     openedCategories.add(categoryId);
     persist();closeDialog('pointDialog');render();showToast(editPointId?'Gebedspunt bijgewerkt.':'Gebedspunt toegevoegd.');
   });
@@ -270,10 +306,27 @@
     $('detailTitle').textContent=point.title;
     $('detailCategory').textContent=getCategory(point.categoryId)?.name||'';
     $('detailBody').textContent=point.body;
-    $('detailDate').textContent=`Toegevoegd op ${new Intl.DateTimeFormat('nl-NL',{dateStyle:'long'}).format(new Date(point.createdAt))}`;
+    $('detailDate').textContent=`Toegevoegd op ${formatDate(point.createdAt)}`;
+    const answered=isAnswered(point);
+    $('answeredDate').hidden=!answered;
+    $('answeredDate').textContent=answered?`Als verhoord gemarkeerd op ${formatDate(point.answeredAt||point.updatedAt)}`:'';
+    const answerButton=$('answerPointButton');
+    answerButton.textContent=answered?'↶ Terugzetten':'✓ Verhoord';
+    answerButton.setAttribute('aria-label',answered?'Terugzetten naar actieve gebedspunten':'Markeren als verhoord gebed');
     openDialog('detailDialog');
   }
   $('editPointButton').addEventListener('click',()=>{const id=selectedPointId;closeDialog('detailDialog');openPointEditor(id);});
+  $('answerPointButton').addEventListener('click',()=>{
+    const point=db.points.find(p=>p.id===selectedPointId);if(!point)return;
+    const wasAnswered=isAnswered(point);
+    point.status=wasAnswered?'active':'answered';
+    point.answeredAt=wasAnswered?null:new Date().toISOString();
+    point.updatedAt=new Date().toISOString();
+    if(wasAnswered)openedCategories.add(point.categoryId);
+    else answeredOpen=true;
+    persist();closeDialog('detailDialog');render();
+    showToast(wasAnswered?'Gebedspunt teruggezet naar de actieve lijst.':'Gebed verplaatst naar Verhoorde gebeden.');
+  });
   $('deletePointButton').addEventListener('click',()=>{
     const point=db.points.find(p=>p.id===selectedPointId);if(!point)return;
     if(!confirm(`Weet je zeker dat je ‘${point.title}’ wilt verwijderen?`))return;
@@ -281,7 +334,7 @@
     persist();closeDialog('detailDialog');render();showToast('Gebedspunt verwijderd.');
   });
   function renderRandom() {
-    const pool=[...db.points];
+    const pool=activePoints();
     // Fisher-Yates: uniforme steekproef zonder duplicaten binnen één selectie.
     for(let i=pool.length-1;i>0;i--){
       const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];
@@ -363,7 +416,7 @@
       const parsed=JSON.parse(await file.text());
       if(parsed.app && parsed.app!=='mijn-gebedspunten')throw Error('Dit is geen back-up van Mijn gebedspunten.');
       const imported=validateDatabase(parsed);
-      if(!confirm(`Back-up met ${imported.points.length} gebedspunten en ${imported.categories.length} categorieën importeren? Dit VERVANGT al je huidige gegevens. Maak zo nodig eerst een export.`))return;
+      if(!confirm(`Back-up met ${imported.points.length} gebedspunten (waarvan ${imported.points.filter(isAnswered).length} verhoord) en ${imported.categories.length} categorieën importeren? Dit VERVANGT al je huidige gegevens. Maak zo nodig eerst een export.`))return;
       // Sla de import eerst op: als lokale opslag faalt, blijven huidige gegevens behouden.
       localStorage.setItem(STORAGE_KEY,JSON.stringify(imported));
       db=imported;openedCategories=new Set();render();renderSettingsCategories();renderPreferences();closeDialog('settingsDialog');showToast('Back-up succesvol geïmporteerd.');

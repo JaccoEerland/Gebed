@@ -333,24 +333,53 @@
     db.points=db.points.filter(p=>p.id!==point.id);
     persist();closeDialog('detailDialog');render();showToast('Gebedspunt verwijderd.');
   });
-  function renderRandom() {
-    const pool=activePoints();
-    // Fisher-Yates: uniforme steekproef zonder duplicaten binnen één selectie.
-    for(let i=pool.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];
+  // Evenwichtige, willekeurige selectie: geef iedere aanwezige categorie eerst
+  // maximaal één punt voordat een tweede punt uit dezelfde categorie komt.
+  // Als een categorie minder punten heeft, kiest de app uit de resterende categorieën.
+  function shuffleInPlace(items) {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
     }
-    const chosen=pool.slice(0,db.settings.count);
-    $('randomTitle').textContent=`${chosen.length} ${chosen.length===1?'gebedspunt':'gebedspunten'}`;
-    $('randomHint').textContent=pool.length<db.settings.count?`Je hebt minder dan ${db.settings.count} gebedspunten. Daarom zie je ze allemaal.`:`Dit zijn ${db.settings.count} willekeurige punten uit al je categorieën. Tik op een titel om de beschrijving te lezen.`;
-    const list=$('randomList');list.replaceChildren();
-    chosen.forEach((point,i)=>{
-      const details=make('details','random-item');
-      const summary=make('summary');
-      const number=make('span','number-pill',String(i+1));
-      const text=make('span','random-item-title',point.title);
-      const cat=make('span','random-item-cat',getCategory(point.categoryId)?.name||'');
-      text.append(cat);summary.append(number,text,svgChevron());
-      details.append(summary,make('div','random-detail',point.body));list.append(details);
+    return items;
+  }
+  function chooseBalancedPoints(count) {
+    const byCategory = new Map();
+    for (const point of activePoints()) {
+      if (!byCategory.has(point.categoryId)) byCategory.set(point.categoryId, []);
+      byCategory.get(point.categoryId).push(point);
+    }
+    const buckets = [...byCategory.values()].map(points => shuffleInPlace(points));
+    const chosen = [];
+    const goal = Math.min(count, buckets.reduce((sum, bucket) => sum + bucket.length, 0));
+    while (chosen.length < goal) {
+      // De volgorde is elke ronde opnieuw willekeurig, zodat de categorieën
+      // met een extra punt niet steeds dezelfde zijn.
+      const available = shuffleInPlace(buckets.filter(bucket => bucket.length));
+      if (!available.length) break;
+      for (const bucket of available) {
+        if (chosen.length === goal) break;
+        chosen.push(bucket.pop());
+      }
+    }
+    return chosen;
+  }
+  function renderRandom() {
+    const chosen = chooseBalancedPoints(db.settings.count);
+    const availableCount = activePoints().length;
+    $('randomTitle').textContent = `${chosen.length} ${chosen.length===1?'gebedspunt':'gebedspunten'}`;
+    $('randomHint').textContent = availableCount < db.settings.count
+      ? `Je hebt minder dan ${db.settings.count} actieve gebedspunten. Daarom zie je ze allemaal, zo veel mogelijk verspreid over categorieën.`
+      : 'Willekeurige punten, zo veel mogelijk verdeeld over verschillende categorieën. Tik op een titel om de beschrijving te lezen.';
+    const list = $('randomList'); list.replaceChildren();
+    chosen.forEach((point, i) => {
+      const details = make('details', 'random-item');
+      const summary = make('summary');
+      const number = make('span', 'number-pill', String(i + 1));
+      const text = make('span', 'random-item-title', point.title);
+      const cat = make('span', 'random-item-cat', getCategory(point.categoryId)?.name || '');
+      text.append(cat); summary.append(number, text, svgChevron());
+      details.append(summary, make('div', 'random-detail', point.body)); list.append(details);
     });
   }
   $('randomButton').addEventListener('click',()=>{if(!db.points.length)return;renderRandom();openDialog('randomDialog');});
@@ -363,7 +392,7 @@
     const id=makeId();db.categories.push({id,name});openedCategories.add(id);persist();render();renderSettingsCategories();return id;
   }
   $('addCategoryButton').addEventListener('click',()=>{openDialog('settingsDialog');$('newCategoryName').focus();});
-  $('openSettings').addEventListener('click',()=>{renderSettingsCategories();openDialog('settingsDialog');});
+  $('openSettings').addEventListener('click',()=>{renderSettingsCategories();updateConflictImportButton();openDialog('settingsDialog');});
   function renderSettingsCategories() {
     const list=$('settingsCategoryList');list.replaceChildren();
     db.categories.forEach(cat=>{
@@ -422,6 +451,130 @@
       db=imported;openedCategories=new Set();render();renderSettingsCategories();renderPreferences();closeDialog('settingsDialog');showToast('Back-up succesvol geïmporteerd.');
     }catch(error){console.warn('Import mislukt',error);showToast(`Importeren mislukt: ${error.message||'ongeldig bestand'}`);}
   });
+  // Eenmalige inhoudelijke aanvulling voor 15 relatief vergeten conflicten,
+  // zonder bestaande gebedspunten, instellingen of categorieën te vervangen.
+  const CONFLICT_POINTS_2026 = [
+    {
+        "slug": "sudan",
+        "title": "Soedan — Burgeroorlog en hongersnood",
+        "body": "Sinds april 2023 vechten het Soedanese leger (SAF) en de paramilitaire Rapid Support Forces (RSF) om de macht. Vooral in Darfur en Kordofan worden burgers getroffen door gevechten, verdrijving en ernstige voedseltekorten. Veel gezinnen hebben geen veilige woonplaats of toegang tot medische zorg. Bid om bescherming, voedsel, hulpverlening en een rechtvaardige vrede."
+    },
+    {
+        "slug": "congo",
+        "title": "DR Congo — Oorlog in het oosten",
+        "body": "In het oosten van de Democratische Republiek Congo vechten het regeringsleger en verschillende gewapende groepen, waaronder M23 en ADF. De M23-rebellie heeft ook een regionale dimensie door de betrokkenheid van Rwanda. Geweld en vluchtbewegingen ontwrichten het leven van veel inwoners. Bid om veiligheid voor burgers, herstel voor slachtoffers en duurzame vrede."
+    },
+    {
+        "slug": "sahel",
+        "title": "Mali, Burkina Faso en Niger — Jihadistisch geweld",
+        "body": "In deze drie landen in de Sahel zijn jihadistische groeperingen, waaronder JNIM en aan Islamitische Staat verbonden strijders, verwikkeld in een langdurige strijd met legers en andere gewapende groepen. Dorpen en verbindingen worden onveilig en veel bewoners slaan op de vlucht. Ook spanningen tussen bevolkingsgroepen verergeren het geweld. Bid om bescherming, verzoening en toegang tot hulp."
+    },
+    {
+        "slug": "nigeria",
+        "title": "Nigeria — Boko Haram en ISWAP",
+        "body": "Vooral in het noordoosten van Nigeria en rond het Tsjaadmeer zijn Boko Haram en Islamic State West Africa Province (ISWAP) actief. Aanvallen, ontvoeringen en gevechten maken het gewone leven en de voedselvoorziening onzeker. Ook elders in Nigeria is sprake van ernstig gewapend geweld. Bid voor de getroffen gemeenschappen, vrijlating van ontvoerden en vrede."
+    },
+    {
+        "slug": "ethiopia",
+        "title": "Ethiopië — Geweld in meerdere regio’s",
+        "body": "Na de grote oorlog in Tigray is Ethiopië niet duurzaam tot rust gekomen. In Amhara vechten Fano-milities tegen federale troepen; in Oromia zijn gewapende groepen actief en in Noord-Ethiopië zijn opnieuw ernstige vijandelijkheden uitgebroken. Burgers ondervinden geweld, ontheemding en beperkingen van hulp. Bid om bescherming en politieke verzoening."
+    },
+    {
+        "slug": "cameroon",
+        "title": "Kameroen — Engelstalige separatistenstrijd",
+        "body": "In de Engelstalige regio’s van Kameroen vechten separatistische groepen tegen de regering. De strijd hangt samen met langdurige politieke en taalkundige spanningen en de roep om een onafhankelijke staat, vaak Ambazonië genoemd. Bewoners lijden onder aanvallen, angst, ontheemding en verstoring van het onderwijs. Bid om veiligheid en een vreedzame oplossing."
+    },
+    {
+        "slug": "mozambique",
+        "title": "Mozambique — Opstand in Cabo Delgado",
+        "body": "In de noordelijke provincie Cabo Delgado vallen aan Islamitische Staat gelieerde strijders dorpen en veiligheidstroepen aan. De bevolking wordt geconfronteerd met moorden, verwoeste huizen en nieuwe vluchtbewegingen. De onveiligheid maakt het moeilijk om landbouw, onderwijs en hulpverlening voort te zetten. Bid om bescherming, herstel en een einde aan de aanvallen."
+    },
+    {
+        "slug": "south-sudan",
+        "title": "Zuid-Soedan — Geweld en kwetsbare vrede",
+        "body": "Zuid-Soedan werd in 2011 onafhankelijk, maar werd daarna getroffen door een zware burgeroorlog. Ondanks een vredesakkoord laaien spanningen tussen politieke en militaire rivalen en lokale gewapende groepen steeds weer op. Daarbovenop maken honger en ontheemding het leven onzeker. Bid om de-escalatie, samenwerking tussen leiders en hulp voor gezinnen."
+    },
+    {
+        "slug": "somalia",
+        "title": "Somalië — Oorlog tegen Al-Shabaab",
+        "body": "In Somalië bestrijden regeringstroepen en hun bondgenoten de jihadistische groepering Al-Shabaab, die in verschillende gebieden invloed en controle uitoefent. Aanslagen, gevechten en afpersing bedreigen inwoners, terwijl droogte en voedselonzekerheid de nood vergroten. Bid om bescherming van burgers, betrouwbaar bestuur en blijvende vrede."
+    },
+    {
+        "slug": "car",
+        "title": "Centraal-Afrikaanse Republiek — Rebellie en geweld",
+        "body": "In de Centraal-Afrikaanse Republiek blijft het onveilig door de aanwezigheid van uiteenlopende gewapende groepen en confrontaties met regeringstroepen. Lokale gemeenschappen worden getroffen door geweld, gedwongen vertrek en een gebrek aan basisvoorzieningen. Internationale vredestroepen proberen burgers te beschermen. Bid om veiligheid, gerechtigheid en herstel van vertrouwen."
+    },
+    {
+        "slug": "yemen",
+        "title": "Jemen — Burgeroorlog en honger",
+        "body": "In Jemen strijden de Houthi-beweging en de internationaal erkende regering met hun bondgenoten al jarenlang om macht en grondgebied. In het najaar van 2026 zijn de gevechten opnieuw ernstig geëscaleerd. De oorlog, beschadigde infrastructuur en economische ontwrichting veroorzaken grote tekorten aan voedsel en medische zorg. Bid om vrede, bescherming van kinderen en toegang tot hulp."
+    },
+    {
+        "slug": "myanmar",
+        "title": "Myanmar — Burgeroorlog na de staatsgreep",
+        "body": "Sinds de militaire staatsgreep van 2021 strijdt het leger tegen democratische verzetsgroepen en verschillende etnische gewapende organisaties. Luchtaanvallen, grondgevechten en mensenrechtenschendingen maken grote delen van het land onveilig. Veel mensen zijn ontheemd en hulpverlening wordt bemoeilijkt. Bid om bescherming, vrijheid, recht en een vreedzame toekomst."
+    },
+    {
+        "slug": "pakistan",
+        "title": "Pakistan — Opstanden en aanslagen",
+        "body": "Pakistan kampt met verschillende gewapende conflicten. In Beloetsjistan strijden separatistische groepen, waaronder de BLA, tegen de staat; in het noordwesten is de Pakistaanse taliban (TTP) actief. Aanslagen en militaire operaties treffen ook burgers en zorgen voor angst en instabiliteit. Bid om veiligheid, recht en vreedzame oplossingen voor de achterliggende spanningen."
+    },
+    {
+        "slug": "colombia",
+        "title": "Colombia — Guerrillastrijd en geweld",
+        "body": "Het vredesakkoord met de FARC uit 2016 maakte geen einde aan al het gewapende geweld in Colombia. De ELN, FARC-afsplitsingen en andere gewapende organisaties blijven actief en strijden soms ook onderling om invloed en gebied. Vooral afgelegen gemeenschappen worden getroffen door bedreiging, rekrutering en verdrijving. Bid om veiligheid en een duurzame vrede."
+    },
+    {
+        "slug": "haiti",
+        "title": "Haïti — Gewapende bendes en onveiligheid",
+        "body": "In Haïti controleren zwaarbewapende bendes delen van de hoofdstad Port-au-Prince en omliggende gebieden. Door ontvoeringen, aanvallen en gevechten met veiligheidstroepen leven veel gezinnen in angst en zijn mensen op de vlucht. Bestuurlijke zwakte en beperkte toegang tot voedsel, zorg en onderwijs verergeren de crisis. Bid om bescherming, rechtvaardig bestuur en herstel."
+    }
+];
+  function conflictsNotYetAdded() {
+    const existingIds = new Set(db.points.map(point => point.id));
+    const existingTitles = new Set(db.points.map(point => point.title.trim().toLocaleLowerCase('nl')));
+    return CONFLICT_POINTS_2026.filter(item =>
+      !existingIds.has(`conflict-2026-${item.slug}`) &&
+      !existingTitles.has(item.title.toLocaleLowerCase('nl'))
+    );
+  }
+  function updateConflictImportButton() {
+    const remaining = conflictsNotYetAdded().length;
+    const button = $('addConflictsButton');
+    button.disabled = remaining === 0;
+    button.textContent = remaining ? `${remaining} conflicten toevoegen aan Wereld` : 'Alle 15 conflicten staan in je lijst';
+  }
+  $('addConflictsButton').addEventListener('click', () => {
+    const remaining = conflictsNotYetAdded();
+    if (!remaining.length) { updateConflictImportButton(); return; }
+    // Maak een nieuw gegevensobject en bewaar dat eerst: een eventuele fout
+    // in lokale opslag verandert de lopende lijst niet.
+    const next = {...db, categories: db.categories.slice(), points: db.points.slice()};
+    let world = next.categories.find(cat => cat.name.toLocaleLowerCase('nl') === 'wereld');
+    if (!world) {
+      world = {id: makeId(), name: 'Wereld'};
+      next.categories.push(world);
+    }
+    const now = new Date().toISOString();
+    remaining.forEach(item => next.points.push({
+      id: `conflict-2026-${item.slug}`, categoryId: world.id,
+      title: item.title, body: item.body, createdAt: now, updatedAt: now,
+      status: 'active', answeredAt: null
+    }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (error) {
+      console.error('Toevoegen conflicten mislukt', error);
+      showToast('Opslaan is mislukt. Je bestaande gegevens zijn niet gewijzigd.');
+      return;
+    }
+    db = next;
+    openedCategories.add(world.id);
+    render(); renderSettingsCategories(); updateConflictImportButton();
+    closeDialog('settingsDialog');
+    showToast(`${remaining.length} conflicten toegevoegd aan de categorie Wereld.`);
+  });
+  updateConflictImportButton();
   // Instellingen zijn onderdeel van dezelfde lokale back-up als de gebedspunten.
   // De 66 Bijbelboeken, met hoofdstukaantallen en de slugs van Free.Bible.
   const BOOKS = [

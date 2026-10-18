@@ -102,3 +102,6 @@
 [data-theme="light"] .answered-toggle:hover{background:#f4f8f3}
 [data-theme="light"] .answered-category{color:#33634a}
 [data-theme="light"] .answered-date{color:#4b7658}
+
+/* Eenmalig toevoegen van voorbereide conflictgebedspunten. */
+.bulk-add-button{width:100%;margin-top:5px;white-space:normal;line-height:1.45;min-height:48px}

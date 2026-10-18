@@ -1,4 +1,4 @@
-const CACHE = 'mijn-gebedspunten-pwa-v4';
+const CACHE = 'mijn-gebedspunten-pwa-v5';
 const APP_ASSETS = ['./','./index.html','./styles.css','./app.js','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_ASSETS)).then(() => self.skipWaiting()));

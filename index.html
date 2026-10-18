@@ -135,13 +135,39 @@
       <div class="settings-divider"></div>
       <h3 class="settings-heading">Categorieën beheren</h3><p class="field-note">Hernoem een categorie of voeg er een toe.</p><div id="settingsCategoryList" class="settings-category-list"></div><div class="settings-add-row"><input id="newCategoryName" maxlength="40" aria-label="Naam nieuwe categorie" placeholder="Nieuwe categorie"><button id="settingsCreateCategory" class="mini-button" type="button">Toevoegen</button></div><p id="categoryError" class="error-message" hidden role="alert"></p>
       <div class="settings-divider"></div>
-      <h3 class="settings-heading">Gebed voor vergeten conflicten</h3>
-      <p class="field-note">Voeg in één keer 15 actuele conflicten toe, elk met een korte titel en een beschrijving. Alles komt in <strong>Wereld</strong>. Bestaande gebedspunten en instellingen blijven staan; nogmaals toevoegen maakt geen dubbelen.</p>
-      <button id="addConflictsButton" type="button" class="secondary-button bulk-add-button">15 conflicten toevoegen aan Wereld</button>
+      <h3 class="settings-heading">Gebedspunten uit tekst importeren</h3>
+      <p class="field-note">Plak een tekst met meerdere kopjes en beschrijvingen. Je krijgt eerst een voorstel en kunt alles controleren, aanpassen of overslaan. Niets wordt zonder bevestiging toegevoegd.</p>
+      <button id="openBulkImport" type="button" class="secondary-button bulk-open-button">＋ Tekst plakken en voorstel maken</button>
       <div class="settings-divider"></div><h3 class="settings-heading">Back-up van je gebedspunten</h3><p class="field-note">Een back-up bevat ook je instellingen en Bijbelteksten. Het is een niet-versleuteld JSON-bestand: bewaar het zorgvuldig.</p><div class="backup-actions"><button id="exportButton" type="button" class="secondary-button">↓ Exporteren</button><button id="importButton" type="button" class="secondary-button">↑ Importeren</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
       <div class="settings-divider"></div><h3 class="settings-heading">Privacy en offline</h3><p class="field-note">Geen account of advertenties. Gebedspunten en automatische titel-/categorievoorstellen blijven lokaal. Alleen het opzoeken van een Bijbeltekst vraagt internet. Lokaal opgeslagen gegevens zijn niet afzonderlijk versleuteld.</p>
     </div>
     <div class="dialog-actions"><button type="button" class="primary-button" data-close="settingsDialog">Gereed</button></div>
+  </dialog>
+
+  <dialog id="bulkDialog" class="app-dialog bulk-dialog" aria-labelledby="bulkDialogTitle">
+    <div class="dialog-head"><div><p class="section-kicker">MEERDERE PUNTEN TEGELIJK</p><h2 id="bulkDialogTitle">Gebedspunten uit tekst</h2></div><button type="button" class="close-button" data-close="bulkDialog" aria-label="Sluiten">×</button></div>
+    <div class="dialog-content">
+      <p class="field-note">Zet elk kopje op een aparte regel, met daaronder de beschrijving. De app herkent gewone kopjes, <strong># Markdown-kopjes</strong>, <strong>**vetgedrukte kopjes**</strong> en <strong>1. genummerde kopjes</strong>. Je kunt maximaal 100 punten per keer importeren.</p>
+      <details class="bulk-example"><summary>Voorbeeld van de indeling</summary><pre>## Soedan — Burgeroorlog
+In Soedan zijn veel mensen op de vlucht. Bid om vrede.
+
+## Myanmar — Burgeroorlog
+Veel gezinnen hebben hun huis verloren. Bid om bescherming.</pre></details>
+      <label class="field-label" for="bulkTextInput">Tekst om te verwerken</label>
+      <textarea id="bulkTextInput" rows="9" maxlength="120000" placeholder="Plak hier je tekst met kopjes en beschrijvingen…" spellcheck="true"></textarea>
+      <label class="field-label" for="bulkDefaultCategory">Categorie voor nieuwe punten</label>
+      <select id="bulkDefaultCategory"><option value="auto">Automatisch voorstellen</option></select>
+      <p class="field-note">Je kunt per gebedspunt een andere categorie kiezen in het voorstel. Bestaande punten blijven staan.</p>
+      <button type="button" class="primary-button bulk-generate-button" id="bulkGenerateButton">Voorstel maken</button>
+      <p class="error-message" id="bulkError" role="alert" hidden></p>
+      <section id="bulkPreview" class="bulk-preview" aria-label="Importvoorstel" hidden>
+        <div class="bulk-preview-heading"><h3>Voorstel controleren</h3><p id="bulkPreviewSummary" class="muted" aria-live="polite"></p><p id="bulkSkippedNote" class="field-note"></p></div>
+        <div id="bulkPreviewList" class="bulk-preview-list"></div>
+        <p class="field-note">Een vinkje betekent dat het punt wordt toegevoegd. Mogelijke dubbele titels zijn standaard uitgevinkt. Totdat je op toevoegen drukt, verandert er niets.</p>
+        <button type="button" id="bulkCommitButton" class="primary-button bulk-commit-button">Gebedspunten toevoegen</button>
+      </section>
+    </div>
+    <div class="dialog-actions"><button type="button" class="secondary-button" data-close="bulkDialog">Sluiten zonder importeren</button></div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

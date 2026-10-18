@@ -103,5 +103,28 @@
 [data-theme="light"] .answered-category{color:#33634a}
 [data-theme="light"] .answered-date{color:#4b7658}
 
-/* Eenmalig toevoegen van voorbereide conflictgebedspunten. */
-.bulk-add-button{width:100%;margin-top:5px;white-space:normal;line-height:1.45;min-height:48px}
+/* Tekst importeren: bewerkbaar voorstel, ook op smalle telefoonschermen. */
+.bulk-open-button{width:100%;white-space:normal;min-height:48px;text-align:center}
+.bulk-dialog{width:min(calc(100% - 24px),700px)}
+.bulk-dialog .dialog-content{padding-top:4px}
+.bulk-dialog textarea{min-height:150px}
+.bulk-dialog textarea#bulkTextInput{min-height:190px}
+.bulk-example{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:14px 0;color:var(--muted);font-size:.82rem}
+.bulk-example summary{cursor:pointer;font-weight:650}
+.bulk-example pre{font-size:.77rem;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text);line-height:1.55;margin:12px 0 0}
+.bulk-generate-button,.bulk-commit-button{width:100%;justify-content:center;margin:10px 0 4px}
+.bulk-preview{margin:25px 0 5px;border-top:1px solid var(--line);padding-top:20px}
+.bulk-preview[hidden],.bulk-duplicate-warning[hidden]{display:none}
+.bulk-preview-heading h3{font-family:Georgia,serif;font-weight:500;font-size:1.4rem;margin:2px 0 8px}
+.bulk-preview-list{display:grid;gap:14px;margin:17px 0}
+.bulk-preview-card{border:1px solid #526b60;background:#263938;border-radius:15px;padding:15px}
+.bulk-preview-card.bulk-excluded{border-style:dashed;opacity:.66}
+.bulk-item-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:.91rem}
+.bulk-item-checkbox{display:inline-flex;align-items:center;gap:8px;font-size:.84rem;color:var(--mint);font-weight:650;cursor:pointer}
+.bulk-item-checkbox input{accent-color:#b9ddc7;width:18px;height:18px}
+.bulk-preview-card .field-label{margin-top:12px;margin-bottom:6px}
+.bulk-preview-card textarea{min-height:100px}
+.bulk-duplicate-warning{font-size:.81rem;line-height:1.5;color:#f1c99a;margin:12px 0 3px}
+[data-theme="light"] .bulk-preview-card{background:#f5f8f3;border-color:#bdcfc2}
+[data-theme="light"] .bulk-duplicate-warning{color:#91551b}
+@media(max-width:470px){.bulk-dialog{width:100%;max-width:100%}.bulk-preview-card{padding:12px}.bulk-dialog .dialog-actions{position:sticky;bottom:0;background:var(--surface,#1d2b2d)}}

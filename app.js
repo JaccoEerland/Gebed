@@ -19,6 +19,7 @@
   let toastTimer = null;
   let openedCategories = new Set();
   let answeredOpen = false;
+  let bulkDraft = null;
 
   function makeId() {
     return (globalThis.crypto && typeof crypto.randomUUID === 'function')
@@ -392,7 +393,7 @@
     const id=makeId();db.categories.push({id,name});openedCategories.add(id);persist();render();renderSettingsCategories();return id;
   }
   $('addCategoryButton').addEventListener('click',()=>{openDialog('settingsDialog');$('newCategoryName').focus();});
-  $('openSettings').addEventListener('click',()=>{renderSettingsCategories();updateConflictImportButton();openDialog('settingsDialog');});
+  $('openSettings').addEventListener('click',()=>{renderSettingsCategories();openDialog('settingsDialog');});
   function renderSettingsCategories() {
     const list=$('settingsCategoryList');list.replaceChildren();
     db.categories.forEach(cat=>{
@@ -451,130 +452,218 @@
       db=imported;openedCategories=new Set();render();renderSettingsCategories();renderPreferences();closeDialog('settingsDialog');showToast('Back-up succesvol geïmporteerd.');
     }catch(error){console.warn('Import mislukt',error);showToast(`Importeren mislukt: ${error.message||'ongeldig bestand'}`);}
   });
-  // Eenmalige inhoudelijke aanvulling voor 15 relatief vergeten conflicten,
-  // zonder bestaande gebedspunten, instellingen of categorieën te vervangen.
-  const CONFLICT_POINTS_2026 = [
-    {
-        "slug": "sudan",
-        "title": "Soedan — Burgeroorlog en hongersnood",
-        "body": "Sinds april 2023 vechten het Soedanese leger (SAF) en de paramilitaire Rapid Support Forces (RSF) om de macht. Vooral in Darfur en Kordofan worden burgers getroffen door gevechten, verdrijving en ernstige voedseltekorten. Veel gezinnen hebben geen veilige woonplaats of toegang tot medische zorg. Bid om bescherming, voedsel, hulpverlening en een rechtvaardige vrede."
-    },
-    {
-        "slug": "congo",
-        "title": "DR Congo — Oorlog in het oosten",
-        "body": "In het oosten van de Democratische Republiek Congo vechten het regeringsleger en verschillende gewapende groepen, waaronder M23 en ADF. De M23-rebellie heeft ook een regionale dimensie door de betrokkenheid van Rwanda. Geweld en vluchtbewegingen ontwrichten het leven van veel inwoners. Bid om veiligheid voor burgers, herstel voor slachtoffers en duurzame vrede."
-    },
-    {
-        "slug": "sahel",
-        "title": "Mali, Burkina Faso en Niger — Jihadistisch geweld",
-        "body": "In deze drie landen in de Sahel zijn jihadistische groeperingen, waaronder JNIM en aan Islamitische Staat verbonden strijders, verwikkeld in een langdurige strijd met legers en andere gewapende groepen. Dorpen en verbindingen worden onveilig en veel bewoners slaan op de vlucht. Ook spanningen tussen bevolkingsgroepen verergeren het geweld. Bid om bescherming, verzoening en toegang tot hulp."
-    },
-    {
-        "slug": "nigeria",
-        "title": "Nigeria — Boko Haram en ISWAP",
-        "body": "Vooral in het noordoosten van Nigeria en rond het Tsjaadmeer zijn Boko Haram en Islamic State West Africa Province (ISWAP) actief. Aanvallen, ontvoeringen en gevechten maken het gewone leven en de voedselvoorziening onzeker. Ook elders in Nigeria is sprake van ernstig gewapend geweld. Bid voor de getroffen gemeenschappen, vrijlating van ontvoerden en vrede."
-    },
-    {
-        "slug": "ethiopia",
-        "title": "Ethiopië — Geweld in meerdere regio’s",
-        "body": "Na de grote oorlog in Tigray is Ethiopië niet duurzaam tot rust gekomen. In Amhara vechten Fano-milities tegen federale troepen; in Oromia zijn gewapende groepen actief en in Noord-Ethiopië zijn opnieuw ernstige vijandelijkheden uitgebroken. Burgers ondervinden geweld, ontheemding en beperkingen van hulp. Bid om bescherming en politieke verzoening."
-    },
-    {
-        "slug": "cameroon",
-        "title": "Kameroen — Engelstalige separatistenstrijd",
-        "body": "In de Engelstalige regio’s van Kameroen vechten separatistische groepen tegen de regering. De strijd hangt samen met langdurige politieke en taalkundige spanningen en de roep om een onafhankelijke staat, vaak Ambazonië genoemd. Bewoners lijden onder aanvallen, angst, ontheemding en verstoring van het onderwijs. Bid om veiligheid en een vreedzame oplossing."
-    },
-    {
-        "slug": "mozambique",
-        "title": "Mozambique — Opstand in Cabo Delgado",
-        "body": "In de noordelijke provincie Cabo Delgado vallen aan Islamitische Staat gelieerde strijders dorpen en veiligheidstroepen aan. De bevolking wordt geconfronteerd met moorden, verwoeste huizen en nieuwe vluchtbewegingen. De onveiligheid maakt het moeilijk om landbouw, onderwijs en hulpverlening voort te zetten. Bid om bescherming, herstel en een einde aan de aanvallen."
-    },
-    {
-        "slug": "south-sudan",
-        "title": "Zuid-Soedan — Geweld en kwetsbare vrede",
-        "body": "Zuid-Soedan werd in 2011 onafhankelijk, maar werd daarna getroffen door een zware burgeroorlog. Ondanks een vredesakkoord laaien spanningen tussen politieke en militaire rivalen en lokale gewapende groepen steeds weer op. Daarbovenop maken honger en ontheemding het leven onzeker. Bid om de-escalatie, samenwerking tussen leiders en hulp voor gezinnen."
-    },
-    {
-        "slug": "somalia",
-        "title": "Somalië — Oorlog tegen Al-Shabaab",
-        "body": "In Somalië bestrijden regeringstroepen en hun bondgenoten de jihadistische groepering Al-Shabaab, die in verschillende gebieden invloed en controle uitoefent. Aanslagen, gevechten en afpersing bedreigen inwoners, terwijl droogte en voedselonzekerheid de nood vergroten. Bid om bescherming van burgers, betrouwbaar bestuur en blijvende vrede."
-    },
-    {
-        "slug": "car",
-        "title": "Centraal-Afrikaanse Republiek — Rebellie en geweld",
-        "body": "In de Centraal-Afrikaanse Republiek blijft het onveilig door de aanwezigheid van uiteenlopende gewapende groepen en confrontaties met regeringstroepen. Lokale gemeenschappen worden getroffen door geweld, gedwongen vertrek en een gebrek aan basisvoorzieningen. Internationale vredestroepen proberen burgers te beschermen. Bid om veiligheid, gerechtigheid en herstel van vertrouwen."
-    },
-    {
-        "slug": "yemen",
-        "title": "Jemen — Burgeroorlog en honger",
-        "body": "In Jemen strijden de Houthi-beweging en de internationaal erkende regering met hun bondgenoten al jarenlang om macht en grondgebied. In het najaar van 2026 zijn de gevechten opnieuw ernstig geëscaleerd. De oorlog, beschadigde infrastructuur en economische ontwrichting veroorzaken grote tekorten aan voedsel en medische zorg. Bid om vrede, bescherming van kinderen en toegang tot hulp."
-    },
-    {
-        "slug": "myanmar",
-        "title": "Myanmar — Burgeroorlog na de staatsgreep",
-        "body": "Sinds de militaire staatsgreep van 2021 strijdt het leger tegen democratische verzetsgroepen en verschillende etnische gewapende organisaties. Luchtaanvallen, grondgevechten en mensenrechtenschendingen maken grote delen van het land onveilig. Veel mensen zijn ontheemd en hulpverlening wordt bemoeilijkt. Bid om bescherming, vrijheid, recht en een vreedzame toekomst."
-    },
-    {
-        "slug": "pakistan",
-        "title": "Pakistan — Opstanden en aanslagen",
-        "body": "Pakistan kampt met verschillende gewapende conflicten. In Beloetsjistan strijden separatistische groepen, waaronder de BLA, tegen de staat; in het noordwesten is de Pakistaanse taliban (TTP) actief. Aanslagen en militaire operaties treffen ook burgers en zorgen voor angst en instabiliteit. Bid om veiligheid, recht en vreedzame oplossingen voor de achterliggende spanningen."
-    },
-    {
-        "slug": "colombia",
-        "title": "Colombia — Guerrillastrijd en geweld",
-        "body": "Het vredesakkoord met de FARC uit 2016 maakte geen einde aan al het gewapende geweld in Colombia. De ELN, FARC-afsplitsingen en andere gewapende organisaties blijven actief en strijden soms ook onderling om invloed en gebied. Vooral afgelegen gemeenschappen worden getroffen door bedreiging, rekrutering en verdrijving. Bid om veiligheid en een duurzame vrede."
-    },
-    {
-        "slug": "haiti",
-        "title": "Haïti — Gewapende bendes en onveiligheid",
-        "body": "In Haïti controleren zwaarbewapende bendes delen van de hoofdstad Port-au-Prince en omliggende gebieden. Door ontvoeringen, aanvallen en gevechten met veiligheidstroepen leven veel gezinnen in angst en zijn mensen op de vlucht. Bestuurlijke zwakte en beperkte toegang tot voedsel, zorg en onderwijs verergeren de crisis. Bid om bescherming, rechtvaardig bestuur en herstel."
-    }
-];
-  function conflictsNotYetAdded() {
-    const existingIds = new Set(db.points.map(point => point.id));
-    const existingTitles = new Set(db.points.map(point => point.title.trim().toLocaleLowerCase('nl')));
-    return CONFLICT_POINTS_2026.filter(item =>
-      !existingIds.has(`conflict-2026-${item.slug}`) &&
-      !existingTitles.has(item.title.toLocaleLowerCase('nl'))
-    );
+  // Tekstimport: volledig lokaal, eerst een controleerbaar voorstel, dan pas opslaan.
+  // De opslagstructuur en opslagsleutel blijven identiek aan eerdere versies.
+  function normalizeBulkTitle(title) {
+    return String(title).replace(/\s+/g, ' ').trim().toLocaleLowerCase('nl');
   }
-  function updateConflictImportButton() {
-    const remaining = conflictsNotYetAdded().length;
-    const button = $('addConflictsButton');
-    button.disabled = remaining === 0;
-    button.textContent = remaining ? `${remaining} conflicten toevoegen aan Wereld` : 'Alle 15 conflicten staan in je lijst';
+  function cleanHeading(text) {
+    return text.trim().replace(/^(?:\*\*|__)/, '').replace(/(?:\*\*|__)$/, '')
+      .replace(/\s+#+\s*$/, '').replace(/\s*:\s*$/, '').trim();
   }
-  $('addConflictsButton').addEventListener('click', () => {
-    const remaining = conflictsNotYetAdded();
-    if (!remaining.length) { updateConflictImportButton(); return; }
-    // Maak een nieuw gegevensobject en bewaar dat eerst: een eventuele fout
-    // in lokale opslag verandert de lopende lijst niet.
-    const next = {...db, categories: db.categories.slice(), points: db.points.slice()};
-    let world = next.categories.find(cat => cat.name.toLocaleLowerCase('nl') === 'wereld');
-    if (!world) {
-      world = {id: makeId(), name: 'Wereld'};
-      next.categories.push(world);
+  function headingAt(lines, index) {
+    const source = lines[index].trim();
+    if (!source || /^(?:-{3,}|={3,}|\*{3,})$/.test(source)) return null;
+    let match;
+    if ((match = source.match(/^#{1,6}\s+(.+)$/))) return cleanHeading(match[1]);
+    if ((match = source.match(/^(?:titel|onderwerp)\s*:\s*(.+)$/i))) return cleanHeading(match[1]);
+    if ((match = source.match(/^(?:\d{1,3}[.)])\s+(.+)$/))) return cleanHeading(match[1]);
+    if ((match = source.match(/^(?:[-*•]\s+)?(?:\*\*(.+?)\*\*|__(.+?)__)\s*:?$/))) return cleanHeading(match[1] || match[2]);
+    // Een gewoon kopje (zonder Markdown) moet op een aparte regel staan.
+    // Voor deze zwakkere vorm vereisen we een lege regel/tekstbegin erboven,
+    // én een erop volgende beschrijving, zodat gewone zinnen geen kopjes worden.
+    const previousBlank = index === 0 || !lines[index-1].trim();
+    const nextIndex = lines.findIndex((line, i) => i > index && line.trim());
+    if (!previousBlank || nextIndex < 0) return null;
+    const nextText = lines[nextIndex].trim();
+    if (/^(?:#{1,6}\s+|\d{1,3}[.)]\s+|\*\*)/.test(nextText)) return null;
+    const candidate = cleanHeading(source);
+    if (candidate.length > 100 || !candidate || candidate.split(/\s+/).length > 14) return null;
+    if (!/^[\p{Lu}\p{N}]/u.test(candidate) || /[.!?;,]$/.test(candidate)) return null;
+    // Een losse prozazin met meer dan twaalf woorden is bijna nooit een kopje.
+    return candidate;
+  }
+  function parseBulkText(input) {
+    if (typeof input !== 'string' || !input.trim()) throw Error('Plak eerst tekst in het invoerveld.');
+    if (input.length > 120000) throw Error('De tekst is te lang (maximaal 120.000 tekens). Verdeel hem in delen.');
+    const lines = input.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').split('\n');
+    const found = [];
+    let current = null;
+    let unrecognized = 0;
+    function commit() {
+      if (!current) return;
+      const body = current.lines.join('\n').trim();
+      if (body) found.push({title:current.title,body,categoryHint:current.categoryHint});
+      else unrecognized += 1;
     }
-    const now = new Date().toISOString();
-    remaining.forEach(item => next.points.push({
-      id: `conflict-2026-${item.slug}`, categoryId: world.id,
-      title: item.title, body: item.body, createdAt: now, updatedAt: now,
-      status: 'active', answeredAt: null
-    }));
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (error) {
-      console.error('Toevoegen conflicten mislukt', error);
-      showToast('Opslaan is mislukt. Je bestaande gegevens zijn niet gewijzigd.');
-      return;
+    for (let i = 0; i < lines.length; i++) {
+      const heading = headingAt(lines, i);
+      if (heading) {
+        commit();
+        current = {title:heading,lines:[],categoryHint:''};
+      } else if (current) {
+        const line = lines[i];
+        // Optionele categorie-aanduiding direct onder een kopje.
+        const category = !current.lines.some(l => l.trim()) && line.trim().match(/^categorie\s*:\s*(.{1,80})$/i);
+        if (category) {current.categoryHint = category[1].trim();continue;}
+        const description = !current.lines.some(l=>l.trim()) ? line.replace(/^\s*(?:beschrijving|uitleg|gebedspunt)\s*:\s*/i,'') : line;
+        current.lines.push(description);
+      }
     }
-    db = next;
-    openedCategories.add(world.id);
-    render(); renderSettingsCategories(); updateConflictImportButton();
-    closeDialog('settingsDialog');
-    showToast(`${remaining.length} conflicten toegevoegd aan de categorie Wereld.`);
+    commit();
+    if (!found.length) throw Error('Geen gebedspunten met kopje én beschrijving gevonden. Gebruik bijvoorbeeld: # Soedan, gevolgd door een beschrijving.');
+    if (found.length > 100) throw Error('Maximaal 100 gebedspunten per keer. Splits de tekst in kleinere delen.');
+    return {points:found,skipped:unrecognized};
+  }
+  function categoryForBulk(point, globalCategory) {
+    if (point.categoryHint) {
+      const matched = db.categories.find(c=>c.name.toLocaleLowerCase('nl')===point.categoryHint.toLocaleLowerCase('nl'));
+      if (matched) return matched.id;
+    }
+    return globalCategory && getCategory(globalCategory)
+      ? globalCategory
+      : suggestCategory(`${point.title} ${point.body}`);
+  }
+  function fillBulkDefaultCategory() {
+    const select = $('bulkDefaultCategory');
+    const previous = select.value;
+    select.replaceChildren();
+    const automatic = make('option','', 'Automatisch voorstellen');automatic.value='auto';select.append(automatic);
+    db.categories.forEach(cat=>{const option=make('option','',cat.name);option.value=cat.id;select.append(option);});
+    select.value = previous && (previous==='auto'||getCategory(previous)) ? previous : 'auto';
+  }
+  function bulkDuplicateInfo() {
+    const existing = new Set(db.points.map(p=>normalizeBulkTitle(p.title)));
+    const selected = new Set();
+    let duplicates = 0;
+    for (const point of bulkDraft || []) {
+      const normalized = normalizeBulkTitle(point.title);
+      point.duplicate = !!normalized && (existing.has(normalized)||selected.has(normalized));
+      if(point.duplicate) duplicates++;
+      if(normalized) selected.add(normalized);
+    }
+    return duplicates;
+  }
+  function updateBulkSummary() {
+    if(!bulkDraft) return;
+    const duplicates=bulkDuplicateInfo();
+    const selected=bulkDraft.filter(p=>p.include).length;
+    $('bulkPreviewSummary').textContent=`${bulkDraft.length} gevonden · ${selected} geselecteerd${duplicates ? ` · ${duplicates} mogelijke dubbele titel(s)` : ''}`;
+    $('bulkCommitButton').textContent=`${selected} ${selected === 1?'gebedspunt':'gebedspunten'} toevoegen`;
+    $('bulkCommitButton').disabled=selected===0;
+    for(const [i,card] of [...$('bulkPreviewList').children].entries()) {
+      const point=bulkDraft[i]; if(!point) continue;
+      card.classList.toggle('bulk-excluded',!point.include);
+      const warning=card.querySelector('.bulk-duplicate-warning');
+      warning.hidden=!point.duplicate;
+      card.querySelector('.bulk-item-state').textContent=point.include?'Toevoegen':'Overslaan';
+    }
+  }
+  function createBulkField(tag,id,labelText,value,maxLength) {
+    const wrapper=make('div','bulk-field');
+    const label=make('label','field-label',labelText);label.htmlFor=id;
+    const field=make(tag,'');field.id=id;field.value=value;field.maxLength=maxLength;
+    if(tag==='textarea')field.rows=3;
+    wrapper.append(label,field);
+    return {wrapper,field};
+  }
+  function renderBulkPreview() {
+    const list=$('bulkPreviewList');list.replaceChildren();
+    bulkDraft.forEach((point,index)=>{
+      const card=make('article','bulk-preview-card');
+      const heading=make('div','bulk-item-heading');
+      const left=make('label','bulk-item-checkbox');
+      const check=make('input');check.type='checkbox';check.checked=point.include;
+      const state=make('span','bulk-item-state',point.include?'Toevoegen':'Overslaan');
+      left.append(check,state);
+      heading.append(make('strong','',`Punt ${index+1}`),left);
+      const title=createBulkField('input',`bulkTitle${index}`,'Titel',point.title,100);
+      const body=createBulkField('textarea',`bulkBody${index}`,'Beschrijving',point.body,4000);
+      const catWrapper=make('div','bulk-field');
+      const catLabel=make('label','field-label','Categorie');catLabel.htmlFor=`bulkCategory${index}`;
+      const select=make('select');select.id=`bulkCategory${index}`;
+      db.categories.forEach(cat=>{const opt=make('option','',cat.name);opt.value=cat.id;select.append(opt);});
+      select.value=point.categoryId;
+      catWrapper.append(catLabel,select);
+      const warning=make('p','bulk-duplicate-warning','Let op: deze titel komt al voor. Vink uit of wijzig de titel als dit geen nieuw gebedspunt is.');
+      warning.hidden=true;
+      check.addEventListener('change',()=>{point.include=check.checked;updateBulkSummary();});
+      title.field.addEventListener('input',()=>{point.title=title.field.value;updateBulkSummary();});
+      body.field.addEventListener('input',()=>{point.body=body.field.value;});
+      select.addEventListener('change',()=>{point.categoryId=select.value;});
+      card.append(heading,title.wrapper,body.wrapper,catWrapper,warning);list.append(card);
+    });
+    $('bulkPreview').hidden=false;
+    $('bulkPreview').scrollIntoView({block:'nearest',behavior:'smooth'});
+    updateBulkSummary();
+  }
+  function clearBulkError() { $('bulkError').hidden=true;$('bulkError').textContent=''; }
+  function showBulkError(text) { const error=$('bulkError');error.textContent=text;error.hidden=false; }
+  $('openBulkImport').addEventListener('click',()=>{
+    fillBulkDefaultCategory();
+    clearBulkError();
+    openDialog('bulkDialog');
   });
-  updateConflictImportButton();
+  // Een wijziging aan de oorspronkelijke tekst maakt het oude voorstel ongeldig.
+  $('bulkTextInput').addEventListener('input',()=>{
+    if(bulkDraft){bulkDraft=null;$('bulkPreview').hidden=true;$('bulkPreviewList').replaceChildren();}
+    clearBulkError();
+  });
+  $('bulkDefaultCategory').addEventListener('change',()=>{
+    if(!bulkDraft)return;
+    const selected=$('bulkDefaultCategory').value;
+    bulkDraft.forEach(point=>{point.categoryId=categoryForBulk(point,selected);});
+    renderBulkPreview();
+  });
+  $('bulkGenerateButton').addEventListener('click',()=>{
+    clearBulkError();
+    try {
+      const result=parseBulkText($('bulkTextInput').value);
+      const chosen=$('bulkDefaultCategory').value;
+      bulkDraft=result.points.map(point=>({
+        ...point,categoryId:categoryForBulk(point,chosen),include:true,duplicate:false
+      }));
+      const originalTitles=new Set(db.points.map(p=>normalizeBulkTitle(p.title)));
+      const seen=new Set();
+      bulkDraft.forEach(point=>{
+        const normalized=normalizeBulkTitle(point.title);
+        if(originalTitles.has(normalized)||seen.has(normalized)) point.include=false;
+        seen.add(normalized);
+      });
+      $('bulkSkippedNote').textContent=result.skipped
+        ? `${result.skipped} kopje(s) zonder beschrijving overgeslagen. Controleer het voorstel.`
+        : 'Controleer alle velden. Pas waar nodig titels, tekst en categorieën aan.';
+      renderBulkPreview();
+    } catch(error) {
+      bulkDraft=null;$('bulkPreview').hidden=true;$('bulkPreviewList').replaceChildren();
+      showBulkError(error.message||'De tekst kon niet worden verwerkt.');
+    }
+  });
+  $('bulkCommitButton').addEventListener('click',()=>{
+    clearBulkError();
+    if(!bulkDraft){showBulkError('Maak eerst een voorstel.');return;}
+    const chosen=bulkDraft.filter(p=>p.include);
+    if(!chosen.length){showBulkError('Vink minimaal één gebedspunt aan.');return;}
+    if(db.points.length+chosen.length>20000){showBulkError('Er is niet genoeg ruimte voor dit aantal gebedspunten.');return;}
+    for(const point of chosen){
+      if(!point.title.trim()||point.title.trim().length>100){showBulkError('Controleer de titels: deze moeten 1 tot 100 tekens bevatten.');return;}
+      if(!point.body.trim()||point.body.trim().length>4000){showBulkError('Controleer de beschrijvingen: deze moeten 1 tot 4000 tekens bevatten.');return;}
+      if(!getCategory(point.categoryId)){showBulkError('Een geselecteerde categorie bestaat niet meer. Maak opnieuw een voorstel.');return;}
+    }
+    const now=new Date().toISOString();
+    const next={...db,points:db.points.concat(chosen.map(p=>({
+      id:makeId(),categoryId:p.categoryId,title:p.title.trim(),body:p.body.trim(),
+      createdAt:now,updatedAt:now,status:'active',answeredAt:null
+    })))};
+    // Alles of niets: eerst opslag controleren, daarna de zichtbare lijst wijzigen.
+    try {localStorage.setItem(STORAGE_KEY,JSON.stringify(next));}
+    catch(error){console.error('Tekstimport mislukt',error);showBulkError('Opslaan is mislukt. Je bestaande gebedspunten zijn niet gewijzigd.');return;}
+    db=next;
+    chosen.forEach(point=>openedCategories.add(point.categoryId));
+    bulkDraft=null;$('bulkTextInput').value='';$('bulkPreview').hidden=true;$('bulkPreviewList').replaceChildren();
+    render();renderSettingsCategories();closeDialog('bulkDialog');closeDialog('settingsDialog');
+    showToast(`${chosen.length} ${chosen.length===1?'gebedspunt toegevoegd':'gebedspunten toegevoegd'}.`);
+  });
   // Instellingen zijn onderdeel van dezelfde lokale back-up als de gebedspunten.
   // De 66 Bijbelboeken, met hoofdstukaantallen en de slugs van Free.Bible.
   const BOOKS = [
